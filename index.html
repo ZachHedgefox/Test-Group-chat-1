@@ -6,26 +6,32 @@
     <title>Simple Global Chat</title>
     <style>
         body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #36393f; color: #dcddde; height: 100vh; display: flex; flex-direction: column; }
+        /* Changed to column-reverse so new items at the top stay at the top */
         #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
         .msg { background: #40444b; padding: 10px; border-radius: 5px; width: fit-content; max-width: 80%; }
         .u { color: #00aff4; font-weight: bold; font-size: 0.8em; margin-bottom: 2px; }
-        .input-box { padding: 20px; background: #2f3136; }
-        input { width: 100%; padding: 12px; border-radius: 5px; border: none; background: #40444b; color: white; outline: none; box-sizing: border-box; }
+        
+        /* Flexbox for input and button alignment */
+        .input-box { padding: 20px; background: #2f3136; display: flex; gap: 10px; }
+        input { flex: 1; padding: 12px; border-radius: 5px; border: none; background: #40444b; color: white; outline: none; }
+        
+        button { padding: 0 20px; border-radius: 5px; border: none; background: #00aff4; color: white; font-weight: bold; cursor: pointer; transition: background 0.2s; }
+        button:hover { background: #008cc3; }
     </style>
 </head>
 <body>
 
     <div id="chat"></div>
     <div class="input-box">
-        <input type="text" id="msgIn" placeholder="Type a message and hit Enter...">
+        <input type="text" id="msgIn" placeholder="Type a message...">
+        <button id="sendBtn">Send</button>
     </div>
 
-    <!-- FIXED: Correct Firebase SDK imports -->
+    <!-- Updated Firebase SDKs -->
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
 
     <script>
-        // IMPORTANT: Replace these placeholders with your actual Firebase project settings
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -36,32 +42,39 @@
             appId: "YOUR_APP_ID"
         };
 
-        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
-        // Listen for messages
+        // Function to handle sending
+        const sendMessage = () => {
+            const input = document.getElementById('msgIn');
+            if (input.value.trim() !== '') {
+                db.ref('messages').push({ 
+                    text: input.value,
+                    timestamp: Date.now() 
+                });
+                input.value = '';
+            }
+        };
+
+        // Listen for new messages and PREPEND them to the top
         db.ref('messages').limitToLast(50).on('child_added', (snap) => {
             const data = snap.val();
             const div = document.createElement('div');
             div.className = 'msg';
             div.innerHTML = `<div class="u">Guest</div><div>${data.text}</div>`;
-            document.getElementById('chat').appendChild(div);
             
-            // Auto-scroll to bottom
             const chatContainer = document.getElementById('chat');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            // Use prepend to put new messages at the top
+            chatContainer.prepend(div);
         });
 
-        // FIXED: Using 'keydown' for better browser support
+        // Click Event
+        document.getElementById('sendBtn').addEventListener('click', sendMessage);
+
+        // Enter Key Event
         document.getElementById('msgIn').addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && e.target.value.trim() !== '') {
-                db.ref('messages').push({ 
-                    text: e.target.value,
-                    timestamp: Date.now() 
-                });
-                e.target.value = ''; // Clear input
-            }
+            if (e.key === 'Enter') sendMessage();
         });
     </script>
 </body>
