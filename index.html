@@ -1,38 +1,95 @@
-</title>
-  <script src="https://js.pusher.com"></script>
-  <style>
-    #chat-box { height: 300px; border: 1px solid #ccc; overflow-y: scroll; margin-bottom: 10px; padding: 10px; }
-    .msg { margin-bottom: 5px; }
-  </style>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-User Group Chat</title>
+    <style>
+        #chat-window {
+            border: 1px solid #ccc;
+            height: 300px;
+            overflow-y: scroll;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+        }
+        #message-input {
+            width: 70%;
+            padding: 5px;
+        }
+        button {
+            padding: 5px 10px;
+        }
+    </style>
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.13.1/firebase-firestore.js"></script>
 </head>
 <body>
-  <div id="chat-box"></div>
-  <input type="text" id="username" placeholder="Your Name">
-  <input type="text" id="message" placeholder="Type a message...">
-  <button onclick="sendMessage()">Send</button>
+    <h1>Group Chat</h1>
+    <div id="chat-window"></div>
+    <input type="text" id="username-input" placeholder="Your username" value="User">
+    <input type="text" id="message-input" placeholder="Type your message...">
+    <button onclick="sendMessage()">Send</button>
 
-  <script>
-    // Replace with your actual Pusher credentials
-    const pusher = new Pusher('YOUR_APP_KEY', { cluster: 'YOUR_CLUSTER' });
-    const channel = pusher.subscribe('group-chat');
+    <script>
+        // Your Firebase config (paste from Firebase console)
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
 
-    // Listen for new messages
-    channel.bind('new-message', function(data) {
-      const chatBox = document.getElementById('chat-box');
-      chatBox.innerHTML += `<div class="msg"><b>${data.username}:</b> ${data.text}</div>`;
-      chatBox.scrollTop = chatBox.scrollHeight;
-    });
+        // Initialize Firebase
+        const app = firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore(app);
+        const messagesRef = db.collection('messages'); // Firestore collection for messages
 
-    async function sendMessage() {
-      const username = document.getElementById('username').value || 'Anonymous';
-      const text = document.getElementById('message').value;
-      if (!text) return;
+        // Listen for real-time updates
+        messagesRef.orderBy('timestamp').onSnapshot(snapshot => {
+            const chatWindow = document.getElementById('chat-window');
+            chatWindow.innerHTML = ''; // Clear and rebuild (simple for demo; optimize for prod)
+            snapshot.forEach(doc => {
+                const data = doc.data();
+                const messageDiv = document.createElement('div');
+                messageDiv.classList.add('message');
+                messageDiv.innerHTML = `<strong>${data.username}:</strong> ${data.text} <small>(${new Date(data.timestamp).toLocaleTimeString()})</small>`;
+                chatWindow.appendChild(messageDiv);
+            });
+            chatWindow.scrollTop = chatWindow.scrollHeight; // Scroll to bottom
+        });
 
-      // Note: In a real app, you'd trigger this via a small backend function 
-      // or a serverless function (like GitHub Actions or Netlify Functions).
-      console.log("Message sent:", { username, text });
-      document.getElementById('message').value = '';
-    }
-  </script>
+        function sendMessage() {
+            const messageInput = document.getElementById('message-input');
+            const usernameInput = document.getElementById('username-input');
+            const messageText = messageInput.value.trim();
+            const username = usernameInput.value.trim() || 'Anonymous';
+
+            if (messageText === '') return;
+
+            // Send to Firestore
+            messagesRef.add({
+                username: username,
+                text: messageText,
+                timestamp: Date.now()
+            }).then(() => {
+                messageInput.value = '';
+                messageInput.focus();
+            }).catch(error => console.error('Error sending message:', error));
+        }
+
+        // Enter key support
+        document.getElementById('message-input').addEventListener('keydown', event => {
+            if (event.key === 'Enter') sendMessage();
+        });
+    </script>
 </body>
 </html>
