@@ -3,102 +3,56 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Community Chat</title>
+    <title>Simple Global Chat</title>
     <style>
-        :root { --bg: #36393f; --side: #2f3136; --accent: #5865f2; --text: #dcddde; }
-        body { margin: 0; font-family: 'Segoe UI', Tahoma, sans-serif; background: var(--bg); color: var(--text); height: 100vh; overflow: hidden; }
-        
-        /* Username Selection Overlay */
-        #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 10; display: flex; align-items: center; justify-content: center; }
-        .login-box { background: var(--side); padding: 40px; border-radius: 8px; width: 320px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
-        
-        /* Chat Interface */
-        #app { display: none; height: 100vh; flex-direction: column; }
-        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 12px; }
-        .msg { background: #40444b; padding: 10px 15px; border-radius: 8px; max-width: 75%; align-self: flex-start; }
-        .msg .user { color: #00aff4; font-weight: bold; font-size: 0.85rem; margin-bottom: 4px; }
-        
-        /* Common Elements */
-        input { width: 100%; padding: 12px; margin: 15px 0; border-radius: 5px; border: none; background: #202225; color: white; box-sizing: border-box; outline: none; }
-        button { width: 100%; padding: 12px; background: var(--accent); color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
-        button:hover { background: #4752c4; }
-        .input-area { padding: 20px; background: var(--side); }
+        body { margin: 0; font-family: 'Segoe UI', sans-serif; background: #36393f; color: #dcddde; height: 100vh; display: flex; flex-direction: column; }
+        #chat { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 8px; }
+        .msg { background: #40444b; padding: 10px; border-radius: 5px; width: fit-content; max-width: 80%; }
+        .u { color: #00aff4; font-weight: bold; font-size: 0.8em; margin-bottom: 2px; }
+        .input-box { padding: 20px; background: #2f3136; }
+        input { width: 100%; padding: 12px; border-radius: 5px; border: none; background: #40444b; color: white; outline: none; box-sizing: border-box; }
     </style>
 </head>
 <body>
 
-    <!-- Step 1: Set Username -->
-    <div id="login-overlay">
-        <div class="login-box">
-            <h2 style="color:white; margin-top:0;">Welcome!</h2>
-            <p>Enter a username to join</p>
-            <input type="text" id="usernameInput" placeholder="Username..." maxlength="15">
-            <button id="joinBtn">Continue</button>
-        </div>
+    <div id="chat"></div>
+    <div class="input-box">
+        <input type="text" id="msgIn" placeholder="Type a message and hit Enter...">
     </div>
 
-    <!-- Step 2: Chat -->
-    <div id="app">
-        <div id="messages"></div>
-        <div class="input-area">
-            <input type="text" id="msgInput" placeholder="Type a message and press Enter...">
-        </div>
-    </div>
-
-    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
 
     <script>
-        // PASTE YOUR CONFIG FROM FIREBASE PROJECT SETTINGS HERE
+        // REPLACE WITH YOUR CONFIG FROM FIREBASE CONSOLE
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
             projectId: "YOUR_PROJECT_ID",
             databaseURL: "https://YOUR_PROJECT_ID.firebaseio.com",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
             appId: "YOUR_APP_ID"
         };
 
+
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
-        let myName = "";
 
-        const loginOverlay = document.getElementById('login-overlay');
-        const app = document.getElementById('app');
-        const joinBtn = document.getElementById('joinBtn');
-        const usernameInput = document.getElementById('usernameInput');
+        // Listen for messages
+        db.ref('messages').limitToLast(50).on('child_added', (snap) => {
+            const data = snap.val();
+            const div = document.createElement('div');
+            div.className = 'msg';
+            div.innerHTML = `<div class="u">Guest</div><div>${data.text}</div>`;
+            document.getElementById('chat').appendChild(div);
+            document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+        });
 
-        // Logic for joining
-        joinBtn.onclick = () => {
-            const val = usernameInput.value.trim();
-            if (val.length >= 2) {
-                myName = val;
-                loginOverlay.style.display = 'none';
-                app.style.display = 'flex';
-                initChat();
-            } else {
-                alert("Username must be at least 2 characters!");
-            }
-        };
-
-        function initChat() {
-            // Watch for new messages
-            db.ref('messages').limitToLast(100).on('child_added', (snap) => {
-                const data = snap.val();
-                const div = document.createElement('div');
-                div.className = 'msg';
-                div.innerHTML = `<div class="user">${data.user}</div><div>${data.text}</div>`;
-                document.getElementById('messages').appendChild(div);
-                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-            });
-        }
-
-        // Send on Enter
-        document.getElementById('msgInput').onkeypress = (e) => {
+        // Send message
+        document.getElementById('msgIn').onkeypress = (e) => {
             if (e.key === 'Enter' && e.target.value.trim()) {
-                db.ref('messages').push({
-                    user: myName,
-                    text: e.target.value
-                });
+                db.ref('messages').push({ text: e.target.value });
                 e.target.value = '';
             }
         };
