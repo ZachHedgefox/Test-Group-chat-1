@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Community Chat</title>
+    <style>
+        :root { --bg: #36393f; --sidebar: #2f3136; --accent: #5865f2; --text: #dcddde; }
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background: var(--bg); color: var(--text); margin: 0; overflow: hidden; }
+        
+        /* Username Overlay */
+        #login-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 100; display: flex; align-items: center; justify-content: center; }
+        .login-card { background: var(--sidebar); padding: 32px; border-radius: 8px; width: 400px; text-align: center; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+        
+        /* Chat Layout */
+        #app { display: none; height: 100vh; flex-direction: column; }
+        #messages { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .msg-box { display: flex; gap: 12px; }
+        .msg-content { display: flex; flex-direction: column; }
+        .user-tag { color: #fff; font-weight: 600; font-size: 0.95rem; }
+        .text-content { color: #dcddde; font-size: 0.9rem; margin-top: 2px; }
+        
+        /* Input Area */
+        .input-wrapper { padding: 0 20px 20px; }
+        #input-container { background: #40444b; border-radius: 8px; display: flex; padding: 10px 15px; }
+        input { background: transparent; border: none; color: white; flex: 1; outline: none; font-size: 1rem; }
+        
+        /* Styling generic elements */
+        button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #4752c4; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+
+    <!-- Username Selection Screen -->
+    <div id="login-overlay">
+        <div class="login-card">
+            <h2 style="color: white; margin-bottom: 8px;">Welcome back!</h2>
+            <p style="margin-bottom: 20px;">Choose a username to join the conversation.</p>
+            <input type="text" id="usernameInput" placeholder="Enter username" 
+                   style="width: 80%; background: #202225; padding: 12px; margin-bottom: 20px; border-radius: 4px; display: block; margin-left: auto; margin-right: auto;">
+            <button onclick="joinChat()" style="width: 90%;">Continue</button>
+        </div>
+    </div>
+
+    <!-- Main Chat App -->
+    <div id="app">
+        <div id="messages"></div>
+        <div class="input-wrapper">
+            <div id="input-container">
+                <input type="text" id="msgField" placeholder="Message #general">
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
+
+    <script>
+        // REPLACE WITH YOUR FIREBASE CONFIG
+        const firebaseConfig = {
+            apiKey: "AIza...", 
+            projectId: "your-project-id",
+            databaseURL: "https://your-project.firebaseio.com",
+            appId: "1:..."
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        let currentUser = localStorage.getItem('chat_username');
+
+        // Check if user already has a name saved
+        if (currentUser) {
+            showApp();
+        }
+
+        function joinChat() {
+            const name = document.getElementById('usernameInput').value.trim();
+            if (name.length > 1) {
+                currentUser = name;
+                localStorage.setItem('chat_username', name); // Save for next visit
+                showApp();
+            } else {
+                alert("Please enter a longer username!");
+            }
+        }
+
+        function showApp() {
+            document.getElementById('login-overlay').classList.add('hidden');
+            document.getElementById('app').style.display = 'flex';
+            loadMessages();
+        }
+
+        function loadMessages() {
+            db.ref('messages').limitToLast(100).on('child_added', (snap) => {
+                const data = snap.val();
+                const div = document.createElement('div');
+                div.className = 'msg-box';
+                div.innerHTML = `
+                    <div class="msg-content">
+                        <span class="user-tag">${data.user}</span>
+                        <span class="text-content">${data.text}</span>
+                    </div>`;
+                document.getElementById('messages').appendChild(div);
+                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            });
+        }
+
+        // Send message on Enter key
+        document.getElementById('msgField').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim() !== "") {
+                db.ref('messages').push({
+                    user: currentUser,
+                    text: e.target.value,
+                    timestamp: Date.now()
+                });
+                e.target.value = "";
+            }
+        });
+    </script>
+</body>
+</html>
