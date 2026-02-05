@@ -20,11 +20,12 @@
         <input type="text" id="msgIn" placeholder="Type a message and hit Enter...">
     </div>
 
+    <!-- FIXED: Correct Firebase SDK imports -->
     <script src="https://www.gstatic.com"></script>
     <script src="https://www.gstatic.com"></script>
 
     <script>
-        // REPLACE WITH YOUR CONFIG FROM FIREBASE CONSOLE
+        // IMPORTANT: Replace these placeholders with your actual Firebase project settings
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
             authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
@@ -35,7 +36,7 @@
             appId: "YOUR_APP_ID"
         };
 
-
+        // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
 
@@ -46,16 +47,22 @@
             div.className = 'msg';
             div.innerHTML = `<div class="u">Guest</div><div>${data.text}</div>`;
             document.getElementById('chat').appendChild(div);
-            document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
+            
+            // Auto-scroll to bottom
+            const chatContainer = document.getElementById('chat');
+            chatContainer.scrollTop = chatContainer.scrollHeight;
         });
 
-        // Send message
-        document.getElementById('msgIn').onkeypress = (e) => {
-            if (e.key === 'Enter' && e.target.value.trim()) {
-                db.ref('messages').push({ text: e.target.value });
-                e.target.value = '';
+        // FIXED: Using 'keydown' for better browser support
+        document.getElementById('msgIn').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && e.target.value.trim() !== '') {
+                db.ref('messages').push({ 
+                    text: e.target.value,
+                    timestamp: Date.now() 
+                });
+                e.target.value = ''; // Clear input
             }
-        };
+        });
     </script>
 </body>
 </html>
